@@ -1,0 +1,62 @@
+export const ENEMY_DEFINITIONS = [
+  {
+      id: 'boar',
+      name: 'Boar',
+      baseHealth: 80,
+      xpReward: 50,
+      modelType: 'boar',
+      damage: 5,
+      speed: 0.4,
+      attackRange: 2.5,
+      aggroRange: 5,
+      leashRadius: 30,
+      wanderRadius: 5,
+      scale: 1.0,
+      isBoss: false
+  },
+  {
+      id: 'wolf',
+      name: 'Wolf',
+      baseHealth: 100,
+      xpReward: 80,
+      modelType: 'wolf',
+      damage: 5,
+      speed: 0.45,
+      attackRange: 2.5,
+      aggroRange: 5,
+      leashRadius: 30,
+      wanderRadius: 5,
+      scale: 1.0,
+      isBoss: false
+  },
+  {
+      id: 'kodo',
+      name: 'Kodo',
+      baseHealth: 200,
+      xpReward: 120,
+      modelType: 'kodo',
+      damage: 5,
+      speed: 0.4,
+      attackRange: 2.5,
+      aggroRange: 5,
+      leashRadius: 30,
+      wanderRadius: 5,
+      scale: 1.0,
+      isBoss: false
+  },
+  {
+      id: 'wolf_boss',
+      name: 'Alpha Wolf',
+      baseHealth: 500,
+      xpReward: 500,
+      modelType: 'wolf',
+      damage: 15,
+      speed: 0.45,
+      attackRange: 4.0,
+      aggroRange: 8,
+      leashRadius: 30,
+      wanderRadius: 5,
+      scale: 1.5,
+      isBoss: true
+  }
+];

@@ -3,7 +3,8 @@ import { GameEngine } from './services/GameEngine';
 import { MockSocket } from './services/MockSocket';
 import { GameState, PlayerState, EnemyState, NPCState } from './types';
 import { User, Sword, Shield, BookOpen, X, Check, MessageCircle, Zap, Heart } from 'lucide-react';
-import { ABILITIES, NPCS_DEFINITIONS, LEVEL_XP } from './constants';
+import { LEVEL_XP } from './constants';
+import { DataLoader } from './services/core/DataLoader';
 
 const Minimap = ({ gameState, localPlayerId }: { gameState: GameState, localPlayerId: string }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -214,7 +215,7 @@ export default function App() {
         if (activeQuest) {
             if (activeQuest.status === 'ready') {
                     // Point to NPC
-                    const npcDef = NPCS_DEFINITIONS.find(n => n.questIds.includes(activeQuest.id));
+                    const npcDef = DataLoader.getAllNPCs().find(n => n.questIds.includes(activeQuest.id));
                     if (npcDef) {
                         const npc = gameState.npcs[npcDef.id];
                         if (npc) navTarget = { x: npc.position.x, z: npc.position.z };
@@ -239,16 +240,13 @@ export default function App() {
   }, [gameState, target]);
 
   // UI Actions
+  const abilities = DataLoader.getAllAbilities();
   const handleAbility = (slot: number) => {
       if (!engineRef.current || !socketRef.current) return;
       
-      let abilityId = '';
-      if (slot === 1) abilityId = ABILITIES[1].id;
-      if (slot === 2) abilityId = ABILITIES[2].id;
-      if (slot === 3) abilityId = ABILITIES[3].id;
-
-      if (abilityId) {
-          engineRef.current.castSpell(abilityId, target?.id || null);
+      const ability = abilities[slot - 1];
+      if (ability) {
+          engineRef.current.castSpell(ability.id, target?.id || null);
       }
   };
 
@@ -435,7 +433,7 @@ export default function App() {
                 <div className="text-orange-500"><Sword size={28} /></div>
                 <div className="absolute bottom-0 right-1 text-xs text-white font-bold bg-black/50 px-1 rounded">1</div>
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap border border-gray-700">
-                    Fireball (Lvl 1)
+                    {abilities[0].name} (Lvl {abilities[0].minLevel})
                 </div>
             </div>
 
@@ -450,7 +448,7 @@ export default function App() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded text-xs font-bold text-red-500">Lv 2</div>
                 )}
                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap border border-gray-700 z-50">
-                    Earth Shock (Lvl 2)
+                    {abilities[1].name} (Lvl {abilities[1].minLevel})
                 </div>
             </div>
 
@@ -465,7 +463,7 @@ export default function App() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded text-xs font-bold text-red-500">Lv 3</div>
                 )}
                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap border border-gray-700 z-50">
-                    Healing Wave (Lvl 3)
+                    {abilities[2].name} (Lvl {abilities[2].minLevel})
                 </div>
             </div>
         </div>

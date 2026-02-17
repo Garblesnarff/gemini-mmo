@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { COLORS } from '../constants';
-import { DataLoader } from './core/DataLoader';
-import { MockSocket } from './MockSocket';
+import { COLORS } from '../shared/constants';
+import { DataLoader } from '../core/DataLoader';
+import { MockSocket } from '../server/MockSocket';
 import { MeshFactory } from './factories/MeshFactory';
 import { SpellEffects } from './effects/SpellEffects';
 import { InputManager } from './systems/InputManager';

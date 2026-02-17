@@ -1,12 +1,12 @@
-import { PlayerState, EnemyState, NPCState, CollectibleState } from '../types';
-import { MOCK_NAMES, LEVEL_XP } from '../constants';
-import { DataLoader } from './core/DataLoader';
-import { CombatSystem } from './server/CombatSystem';
-import { QuestSystem } from './server/QuestSystem';
-import { XPSystem } from './server/XPSystem';
-import { EnemyAI } from './server/EnemyAI';
-import { SpawnManager } from './server/SpawnManager';
-import { EventBus } from './core/EventBus';
+import { PlayerState, EnemyState, NPCState, CollectibleState } from '../shared/types';
+import { MOCK_NAMES, LEVEL_XP } from '../shared/constants';
+import { DataLoader } from '../core/DataLoader';
+import { CombatSystem } from './CombatSystem';
+import { QuestSystem } from './QuestSystem';
+import { XPSystem } from './XPSystem';
+import { EnemyAI } from './EnemyAI';
+import { SpawnManager } from './SpawnManager';
+import { EventBus } from '../core/EventBus';
 
 type Listener = (...args: any[]) => void;
 
