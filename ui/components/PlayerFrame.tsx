@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from 'lucide-react';
 import { PlayerState } from '../../shared/types';
 
@@ -7,10 +8,41 @@ interface PlayerFrameProps {
 }
 
 export const PlayerFrame: React.FC<PlayerFrameProps> = ({ player }) => {
+    const [flash, setFlash] = useState<'none' | 'damage' | 'heal'>('none');
+    const prevHealth = useRef(player?.health);
+
+    useEffect(() => {
+        if (!player) return;
+        const current = player.health;
+        const prev = prevHealth.current || current;
+
+        if (current < prev) {
+            setFlash('damage');
+            setTimeout(() => setFlash('none'), 300);
+        } else if (current > prev) {
+            setFlash('heal');
+            setTimeout(() => setFlash('none'), 300);
+        }
+        prevHealth.current = current;
+    }, [player?.health]);
+
     if (!player) return null;
 
+    let borderClass = 'border-amber-900/50';
+    let containerStyle = {};
+    if (flash === 'damage') {
+        borderClass = 'border-red-500 shadow-lg shadow-red-500/50';
+        containerStyle = { filter: 'brightness(1.5)' };
+    } else if (flash === 'heal') {
+        borderClass = 'border-green-400 shadow-lg shadow-green-400/50';
+        containerStyle = { filter: 'brightness(1.5)' };
+    }
+
     return (
-        <div className="absolute top-4 left-4 w-72 bg-black/80 border-2 border-amber-900/50 p-2 rounded text-white pointer-events-auto shadow-lg">
+        <div 
+            className={`absolute top-4 left-4 w-72 bg-black/80 border-2 p-2 rounded text-white pointer-events-auto shadow-lg transition-all duration-300 ${borderClass}`}
+            style={containerStyle}
+        >
             <div className="flex items-center gap-2 mb-1">
                 <div className="w-10 h-10 bg-amber-800 rounded-full flex items-center justify-center border-2 border-amber-500 shadow-inner relative">
                     <User size={20} className="text-amber-200" />
@@ -46,3 +78,4 @@ export const PlayerFrame: React.FC<PlayerFrameProps> = ({ player }) => {
         </div>
     );
 }
+        

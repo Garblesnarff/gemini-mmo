@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { COLORS } from '../shared/constants';
@@ -5,6 +6,7 @@ import { DataLoader } from '../core/DataLoader';
 import { MockSocket } from '../server/MockSocket';
 import { MeshFactory } from './factories/MeshFactory';
 import { SpellEffects } from './effects/SpellEffects';
+import { DamageNumbers } from './effects/DamageNumbers';
 import { InputManager } from './systems/InputManager';
 import { CameraController } from './systems/CameraController';
 
@@ -33,6 +35,7 @@ export class GameEngine {
   
   // State callbacks
   public onStateUpdate: (data: any) => void = () => {};
+  public onDamageVignette: (active: boolean) => void = () => {};
   
   private clock = new THREE.Clock();
   private particleSystem: THREE.Points;
@@ -55,6 +58,9 @@ export class GameEngine {
     this.scene.background = new THREE.Color(COLORS.SKY);
     this.scene.fog = new THREE.FogExp2(COLORS.SKY, 0.015);
     
+    // Init Effects
+    DamageNumbers.init(this.scene);
+
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
@@ -495,7 +501,11 @@ export class GameEngine {
     requestAnimationFrame(this.animate);
     const dt = this.clock.getDelta();
     const now = this.clock.getElapsedTime();
+    const perfNow = performance.now();
+    
     this.physicsWorld.step(1/60, dt, 3);
+    
+    DamageNumbers.update(dt);
 
     if (this.localPlayerBody && this.localPlayerMesh) {
         this.handlePlayerMovement();
@@ -516,7 +526,7 @@ export class GameEngine {
         }
         
         // Update Camera
-        this.cameraController.update(this.localPlayerMesh.position, this.getTerrainHeight.bind(this));
+        this.cameraController.update(this.localPlayerMesh.position, this.getTerrainHeight.bind(this), dt);
     }
 
     if(this.particleSystem) {
@@ -553,8 +563,45 @@ export class GameEngine {
         mesh.scale.setScalar(1 + Math.sin(now * 3) * 0.1);
     });
 
+    // Enemy Death Animations
+    Object.values(this.enemyMeshes).forEach(mesh => {
+         if (mesh.userData.deathAnimStarted && !mesh.userData.deathAnimComplete) {
+             const progress = (perfNow - mesh.userData.deathTime) / 600;
+             if (progress >= 1) {
+                 mesh.userData.deathAnimComplete = true;
+                 mesh.position.y = mesh.userData.deadY; // Force ground
+             } else {
+                 // 0-200ms (0.33): Knockback and fall
+                 if (progress < 0.33) {
+                     const p1 = progress / 0.33;
+                     // Fall rotation
+                     mesh.rotation.z = Math.PI / 2 * p1;
+                     // Slight knockback
+                     const backward = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), mesh.userData.originalRot || 0);
+                     mesh.position.addScaledVector(backward, 0.02);
+                 } else {
+                     mesh.rotation.z = Math.PI / 2;
+                 }
+
+                 // 200ms-600ms (0.33-1.0): Fade
+                 if (progress > 0.33) {
+                     const p2 = (progress - 0.33) / 0.67;
+                     const opacity = 1 - (p2 * 0.7); // fade to 0.3
+                     mesh.traverse((c) => {
+                         if (c instanceof THREE.Mesh && c.material) {
+                            c.material.transparent = true;
+                            c.material.opacity = opacity;
+                         }
+                     });
+                 }
+             }
+         }
+    });
+
     this.animatedMeshes.forEach(group => {
         if (!group.visible) return;
+        if (group.userData.deathAnimStarted) return; // Disable anims if dying
+
         const isMoving = group.userData.isMoving;
         group.children.forEach(child => {
             if (child.userData.type === 'limb') {
@@ -652,8 +699,58 @@ export class GameEngine {
                 caster = this.localPlayerMesh!;
             }
             const target = event.targetId ? (this.enemyMeshes[event.targetId] || this.playerMeshes[event.targetId]) : null;
+            
             if (caster) SpellEffects.createSpellEffect(this.scene, event.spellId, caster, target);
+
+            // Damage Numbers & Hit Flash
+            if (event.damage > 0 && target) {
+                 const isCrit = Math.random() < 0.2;
+                 DamageNumbers.spawnDamageNumber(
+                     target.position, 
+                     event.damage, 
+                     isCrit ? 'crit' : 'damage'
+                 );
+
+                 // Hit Flash
+                 target.traverse((c) => {
+                     if (c instanceof THREE.Mesh && c.material) {
+                         if (!c.userData.originalEmissive) {
+                             c.userData.originalEmissive = c.material.emissive.clone();
+                             c.userData.originalEmissiveIntensity = c.material.emissiveIntensity;
+                         }
+                         c.material.emissive.setHex(0xFFFFFF);
+                         c.material.emissiveIntensity = 0.8;
+                         setTimeout(() => {
+                             if (c.userData.originalEmissive) {
+                                 c.material.emissive.copy(c.userData.originalEmissive);
+                                 c.material.emissiveIntensity = c.userData.originalEmissiveIntensity;
+                             } else {
+                                 c.material.emissive.setHex(0x000000);
+                                 c.material.emissiveIntensity = 0;
+                             }
+                         }, 100);
+                     }
+                 });
+            }
+
+            if (event.healing > 0 && caster) {
+                 DamageNumbers.spawnDamageNumber(caster.position, event.healing, 'heal');
+            }
+
+            if (event.targetDead) {
+                this.cameraController.shakeCamera(0.25, 200);
+            }
         }
+        
+        if (event.type === 'enemy_attack') {
+             // Enemy hitting player
+             if (event.targetId === this.socket.id && this.localPlayerMesh) {
+                 DamageNumbers.spawnDamageNumber(this.localPlayerMesh.position, event.damage, 'enemy_damage');
+                 this.cameraController.shakeCamera(0.15, 150);
+                 if (this.onDamageVignette) this.onDamageVignette(true);
+             }
+        }
+
         if (event.type === 'levelup') {
             let player = this.playerMeshes[event.playerId];
             if (!player && event.playerId === this.socket.id) {
@@ -731,13 +828,28 @@ export class GameEngine {
         }
 
         if (e.isDead) {
-            // Corpse State
-            mesh.userData.isMoving = false;
-            // Lay on side
-            mesh.rotation.z = Math.PI / 2; 
-            mesh.rotation.y = e.rotation;
+            if (!mesh.userData.deathAnimStarted) {
+                mesh.userData.deathAnimStarted = true;
+                mesh.userData.deathTime = performance.now();
+                mesh.userData.deathAnimComplete = false;
+                mesh.userData.originalRot = mesh.rotation.y;
+                mesh.userData.deadY = e.position.y;
+            }
         } else {
-            // Alive State
+            // Respawn / Alive
+            if (mesh.userData.deathAnimStarted) {
+                 // Reset
+                 mesh.userData.deathAnimStarted = false;
+                 mesh.userData.deathAnimComplete = false;
+                 mesh.traverse((c) => {
+                    if (c instanceof THREE.Mesh && c.material) {
+                        c.material.transparent = false;
+                        c.material.opacity = 1.0;
+                    }
+                 });
+                 mesh.rotation.z = 0;
+            }
+            
             mesh.rotation.z = 0;
             mesh.rotation.x = 0;
             
@@ -868,3 +980,4 @@ export class GameEngine {
       this.renderer.dispose();
   }
 }
+        

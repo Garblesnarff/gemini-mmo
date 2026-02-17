@@ -1,3 +1,4 @@
+
 export * from './Minimap';
 export * from './PlayerFrame';
 export * from './TargetFrame';
@@ -6,3 +7,5 @@ export * from './QuestTracker';
 export * from './QuestDialog';
 export * from './ChatLog';
 export * from './XPBar';
+export * from './DamageVignette';
+        

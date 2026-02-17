@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class CameraController {
@@ -5,6 +6,12 @@ export class CameraController {
   private angle: number = Math.PI;
   private zoom: number = 18;
   private pitch: number = 0.5;
+
+  // Shake State
+  private shakeTimeRemaining: number = 0;
+  private shakeIntensity: number = 0;
+  private initialShakeIntensity: number = 0;
+  private shakeTotalDuration: number = 0;
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -23,7 +30,14 @@ export class CameraController {
       }
   }
 
-  public update(targetPosition: THREE.Vector3, getTerrainHeight: (x: number, z: number) => number) {
+  public shakeCamera(intensity: number, duration: number) {
+      this.initialShakeIntensity = intensity;
+      this.shakeIntensity = intensity;
+      this.shakeTimeRemaining = duration;
+      this.shakeTotalDuration = duration;
+  }
+
+  public update(targetPosition: THREE.Vector3, getTerrainHeight: (x: number, z: number) => number, dt: number) {
       const target = targetPosition.clone();
       target.y += 2.5;
       
@@ -34,7 +48,33 @@ export class CameraController {
       const terrainH = getTerrainHeight(camX, camZ);
       if (camY < terrainH + 1) camY = terrainH + 1; 
       
-      this.camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.2);
+      const finalPos = new THREE.Vector3(camX, camY, camZ);
+
+      // Apply Shake
+      let offsetX = 0;
+      let offsetY = 0;
+      
+      if (this.shakeTimeRemaining > 0) {
+          this.shakeTimeRemaining -= dt * 1000;
+          if (this.shakeTimeRemaining < 0) this.shakeTimeRemaining = 0;
+
+         const ratio = this.shakeTimeRemaining / (this.shakeTotalDuration || 1);
+         const currentIntensity = this.initialShakeIntensity * ratio;
+
+         offsetX = (Math.random() - 0.5) * 2 * currentIntensity;
+         offsetY = (Math.random() - 0.5) * 2 * currentIntensity;
+      }
+      
+      // Interpolate base camera position first
+      const basePos = new THREE.Vector3().copy(this.camera.position).lerp(finalPos, 0.2);
+      
+      this.camera.position.set(
+          basePos.x + offsetX,
+          basePos.y + offsetY,
+          basePos.z + offsetX
+      );
+
       this.camera.lookAt(target);
   }
 }
+        

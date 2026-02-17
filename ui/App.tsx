@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { GameEngine } from '../client/GameEngine';
 import { MockSocket } from '../server/MockSocket';
@@ -12,7 +13,8 @@ import {
     QuestTracker, 
     QuestDialog, 
     ChatLog, 
-    XPBar 
+    XPBar,
+    DamageVignette
 } from './components';
 
 export default function App() {
@@ -30,6 +32,8 @@ export default function App() {
   });
   const [target, setTarget] = useState<EnemyState | null>(null);
   const [activeNPC, setActiveNPC] = useState<NPCState | null>(null);
+  const [damageVignette, setDamageVignette] = useState(false);
+  const prevHealthRef = useRef(100);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -41,6 +45,11 @@ export default function App() {
     // 2. Init Game Engine
     const engine = new GameEngine(containerRef.current, socket);
     engineRef.current = engine;
+    
+    engine.onDamageVignette = (active) => {
+        setDamageVignette(active);
+        if (active) setTimeout(() => setDamageVignette(false), 400);
+    };
 
     // 3. Setup Listeners
     socket.on('init_world', (data: any) => {
@@ -201,6 +210,17 @@ export default function App() {
 
   const localPlayer = gameState.players[gameState.localPlayerId];
 
+  // Manual Vignette Logic Backup (in case event bus misses or for immediate local updates if we used optimistic UI)
+  useEffect(() => {
+    if (localPlayer) {
+        if (localPlayer.health < prevHealthRef.current) {
+            setDamageVignette(true);
+            setTimeout(() => setDamageVignette(false), 400);
+        }
+        prevHealthRef.current = localPlayer.health;
+    }
+  }, [localPlayer?.health]);
+
   // Helper to get quests relevant to this NPC for the local player
   const getNpcQuests = () => {
       if (!activeNPC || !localPlayer) return [];
@@ -220,6 +240,7 @@ export default function App() {
 
       {/* UI Overlay */}
       <div className="absolute inset-0 pointer-events-none">
+        <DamageVignette active={damageVignette} />
         
         <PlayerFrame player={localPlayer} />
         <TargetFrame target={target} />
@@ -245,3 +266,4 @@ export default function App() {
     </div>
   );
 }
+        

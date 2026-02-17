@@ -1,3 +1,4 @@
+
 import { PlayerState, EnemyState, NPCState, CollectibleState } from '../shared/types';
 import { MOCK_NAMES, LEVEL_XP } from '../shared/constants';
 import { DataLoader } from '../core/DataLoader';
@@ -105,12 +106,16 @@ export class MockSocket {
       });
 
       // Combat / World
-      this.eventBus.on('spell_cast', (payload) => {
-           this.trigger('state_update', { 
+      // Removed generic spell_cast listener to prevent duplicates, handled in cast_ability and enemy logic
+      // this.eventBus.on('spell_cast', (payload) => { ... });
+
+      this.eventBus.on('player_damaged', (payload) => {
+          this.trigger('state_update', { 
               players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles,
-              event: { type: 'spell_cast', spellId: payload.spellId, casterId: payload.casterId, targetId: payload.targetId }
+              event: { type: 'enemy_attack', targetId: payload.playerId, damage: payload.damage, sourceId: payload.sourceId }
           });
       });
+
       this.eventBus.on('item_collected', (payload) => {
           if (payload.playerId === this.id) {
                this.trigger('chat_message', { 
@@ -189,7 +194,7 @@ export class MockSocket {
       
       this.trigger('init_world', { 
           players: this.players, 
-          enemies: this.enemies,
+          enemies: this.enemies, 
           npcs: this.npcs,
           collectibles: this.collectibles
       });
@@ -233,6 +238,19 @@ export class MockSocket {
             const result = this.combatSystem.processAbility(player, data.abilityId, data.targetId, this.enemies, this.players);
             if (!result.success && result.error) {
                 this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: result.error, type: 'system' });
+            } else {
+                 this.trigger('state_update', { 
+                    players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles,
+                    event: { 
+                        type: 'spell_cast', 
+                        spellId: data.abilityId, 
+                        casterId: this.id, 
+                        targetId: data.targetId,
+                        damage: result.damage || 0,
+                        healing: result.healing || 0,
+                        targetDead: result.targetDead
+                    }
+                });
             }
         }
     }
@@ -299,3 +317,4 @@ export class MockSocket {
     clearInterval(this.interval);
   }
 }
+        
