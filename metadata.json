@@ -1,0 +1,5 @@
+{
+  "name": "Mulgore Plains - Browser MMO",
+  "description": "A 3D browser-based MMO prototype inspired by classic RPG zones. Features procedural terrain, third-person controls, combat, quests, and simulated multiplayer networking.",
+  "requestFramePermissions": []
+}
