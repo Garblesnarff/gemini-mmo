@@ -182,12 +182,16 @@ export class LootSystem {
       return remaining;
   }
 
-  public equipItem(bagSlot: number): { success: boolean, reason?: string } {
+  public equipItem(bagSlot: number, playerLevel: number): { success: boolean, reason?: string } {
       const item = this.inventory[bagSlot];
       if (!item) return { success: false, reason: "No item" };
 
       const def = DataLoader.getItem(item.itemId);
       if (def.type !== 'equipment' || !def.slot) return { success: false, reason: "Cannot equip that" };
+
+      if (def.levelReq && playerLevel < def.levelReq) {
+          return { success: false, reason: `Requires Level ${def.levelReq}` };
+      }
 
       // Swap
       const currentEquip = this.equipment[def.slot];
@@ -221,12 +225,16 @@ export class LootSystem {
       return { success: true };
   }
 
-  public useItem(bagSlot: number): { success: boolean, effect?: UseEffect } {
+  public useItem(bagSlot: number, playerLevel: number): { success: boolean, effect?: UseEffect, reason?: string } {
       const item = this.inventory[bagSlot];
       if (!item) return { success: false };
       
       const def = DataLoader.getItem(item.itemId);
       if (def.type !== 'consumable' || !def.useEffect) return { success: false };
+
+      if (def.levelReq && playerLevel < def.levelReq) {
+          return { success: false, reason: `Requires Level ${def.levelReq}` };
+      }
 
       // Consume
       if (item.quantity > 1) {

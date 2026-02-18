@@ -350,7 +350,8 @@ export class MockSocket {
         this.trigger('inventory_update', this.lootSystem.getInventoryState());
     }
     if (event === 'equip_item') {
-        const res = this.lootSystem.equipItem(data.slot);
+        const player = this.players[this.id];
+        const res = this.lootSystem.equipItem(data.slot, player.level);
         if (res.success) {
             this.trigger('inventory_update', this.lootSystem.getInventoryState());
             this.trigger('equipment_update', { equipment: this.lootSystem.getEquipmentState(), stats: this.lootSystem.getEquipmentStats() });
@@ -368,8 +369,12 @@ export class MockSocket {
         }
     }
     if (event === 'use_item') {
-        if (this.lootSystem.useItem(data.slot).success) {
+        const player = this.players[this.id];
+        const res = this.lootSystem.useItem(data.slot, player.level);
+        if (res.success) {
             this.trigger('inventory_update', this.lootSystem.getInventoryState());
+        } else if (res.reason) {
+            this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: res.reason, type: 'system' });
         }
     }
     if (event === 'move_item') {
