@@ -1,3 +1,4 @@
+
 import { EnemyState, CollectibleState, NPCState } from '../shared/types';
 import { DataLoader } from '../core/DataLoader';
 import { EventBus } from '../core/EventBus';
@@ -132,7 +133,7 @@ export class SpawnManager {
     }
 
     private onEnemyKilled(payload: { enemyId: string, isBoss: boolean }) {
-        const delay = payload.isBoss ? 30000 : 5000;
+        const delay = payload.isBoss ? 120000 : 60000;
         setTimeout(() => {
             if (payload.isBoss) {
                  const enemy = this.enemies[payload.enemyId];

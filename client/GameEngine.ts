@@ -44,6 +44,9 @@ export class GameEngine {
 
   // Animation State
   private animatedMeshes: THREE.Group[] = [];
+  
+  // Loot Sparkles
+  private lootSparkles: Record<string, THREE.Group> = {};
 
   constructor(container: HTMLElement, socket: MockSocket) {
     this.socket = socket;
@@ -475,6 +478,42 @@ export class GameEngine {
       this.scene.add(this.fireParticles);
   }
 
+  private createLootSparkle(enemyId: string, position: THREE.Vector3) {
+      if (this.lootSparkles[enemyId]) return;
+
+      const group = new THREE.Group();
+      const count = 5;
+      const geo = new THREE.PlaneGeometry(0.2, 0.2);
+      const mat = new THREE.MeshBasicMaterial({ 
+          color: 0xFFD700, 
+          side: THREE.DoubleSide, 
+          transparent: true, 
+          blending: THREE.AdditiveBlending 
+      });
+
+      for(let i=0; i<count; i++) {
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.userData = { 
+              phase: Math.random() * Math.PI * 2, 
+              speed: 1 + Math.random(),
+              radius: 0.5 + Math.random() * 0.5
+          };
+          group.add(mesh);
+      }
+      group.position.copy(position);
+      group.position.y += 1.0;
+      
+      this.scene.add(group);
+      this.lootSparkles[enemyId] = group;
+  }
+
+  private removeLootSparkle(enemyId: string) {
+      if (this.lootSparkles[enemyId]) {
+          this.scene.remove(this.lootSparkles[enemyId]);
+          delete this.lootSparkles[enemyId];
+      }
+  }
+
   private createLocalPlayer(material: CANNON.Material) {
     const spawnX = this.worldConfig.camp.position.x + 10;
     const spawnZ = this.worldConfig.camp.position.z + 10;
@@ -532,6 +571,18 @@ export class GameEngine {
     if(this.particleSystem) {
         this.particleSystem.rotation.y = now * 0.02;
     }
+
+    // Sparkles update
+    Object.values(this.lootSparkles).forEach(group => {
+        group.children.forEach(c => {
+            const ud = c.userData;
+            c.position.x = Math.cos(now * ud.speed + ud.phase) * ud.radius;
+            c.position.z = Math.sin(now * ud.speed + ud.phase) * ud.radius;
+            c.position.y = Math.sin(now * 3 + ud.phase) * 0.2;
+            c.scale.setScalar(0.8 + Math.sin(now * 5 + ud.phase) * 0.4);
+            c.lookAt(this.camera.position);
+        });
+    });
 
     if (this.fireParticles) {
         const positions = this.fireParticles.geometry.attributes.position.array as Float32Array;
@@ -808,6 +859,13 @@ export class GameEngine {
         const mesh = this.enemyMeshes[e.id];
         mesh.visible = true;
 
+        // Visual Loot Flag
+        if (e.lootable) {
+            this.createLootSparkle(e.id, mesh.position);
+        } else {
+            this.removeLootSparkle(e.id);
+        }
+
         // Boss Scale handled in factory logic usually, but let's apply scale from definition if available
         const def = DataLoader.getEnemyDef(e.type, !!e.isBoss);
         if (def && def.scale !== 1.0) {
@@ -828,6 +886,7 @@ export class GameEngine {
         }
 
         if (e.isDead) {
+            mesh.userData.isDead = true;
             if (!mesh.userData.deathAnimStarted) {
                 mesh.userData.deathAnimStarted = true;
                 mesh.userData.deathTime = performance.now();
@@ -836,6 +895,7 @@ export class GameEngine {
                 mesh.userData.deadY = e.position.y;
             }
         } else {
+            mesh.userData.isDead = false;
             // Respawn / Alive
             if (mesh.userData.deathAnimStarted) {
                  // Reset
@@ -958,19 +1018,26 @@ export class GameEngine {
           }
           if (target.userData.id) {
               const type = target.userData.type;
+              
               if (type === 'npc') {
                    if (this.onStateUpdate) this.onStateUpdate({ type: 'npc_interact', id: target.userData.id });
               } else if (type === 'collectible') {
                   // Direct interaction
                   this.socket.emit('collect_item', { itemId: target.userData.id });
-              } else {
-                   this.socket.emit('select_target', target.userData.id);
-                   if (this.onStateUpdate) this.onStateUpdate({ type: 'target_selected', id: target.userData.id });
+              } else if (type === 'enemy') {
+                   if (target.userData.isDead) {
+                       // Request Loot
+                       this.socket.emit('request_loot', { enemyId: target.userData.id });
+                   } else {
+                       this.socket.emit('select_target', target.userData.id);
+                       if (this.onStateUpdate) this.onStateUpdate({ type: 'target_selected', id: target.userData.id });
+                   }
               }
               return;
           }
       }
       
+      // Deselect if clicking ground (optional, keeping current behavior)
       if (this.onStateUpdate) this.onStateUpdate({ type: 'target_selected', id: null });
   }
 
@@ -980,4 +1047,3 @@ export class GameEngine {
       this.renderer.dispose();
   }
 }
-        

@@ -1,3 +1,4 @@
+
 import { PlayerState, EnemyState } from '../shared/types';
 import { DataLoader } from '../core/DataLoader';
 import { EventBus } from '../core/EventBus';
@@ -19,7 +20,7 @@ export class CombatSystem {
         this.eventBus = eventBus;
     }
 
-    public processAbility(player: PlayerState, abilityId: string, targetId: string | null, enemies: Record<string, EnemyState>, players: Record<string, PlayerState>): CombatResult {
+    public processAbility(player: PlayerState, abilityId: string, targetId: string | null, enemies: Record<string, EnemyState>, players: Record<string, PlayerState>, bonusSpellPower: number = 0): CombatResult {
         const ability = DataLoader.getAbilityDef(abilityId);
         if (!ability) return { success: false, error: 'Unknown ability' };
 
@@ -30,18 +31,21 @@ export class CombatSystem {
         this.eventBus.emit('spell_cast', { casterId: player.id, spellId: abilityId, targetId });
 
         if (ability.id === 'healing_wave') {
-            const healAmount = Math.abs(ability.damage);
+            const healAmount = Math.abs(ability.damage) + bonusSpellPower; // Healing benefits from spell power too
             player.health = Math.min(player.maxHealth, player.health + healAmount);
             return { success: true, healing: healAmount, manaConsumed: ability.mana, targetId: player.id };
         } 
         
         if (targetId && enemies[targetId]) {
             const enemy = enemies[targetId];
-            enemy.health -= ability.damage;
+            
+            // Apply spell power
+            const rawDamage = ability.damage + bonusSpellPower;
+            enemy.health -= rawDamage;
 
             this.eventBus.emit('enemy_damaged', { 
                 enemyId: enemy.id, 
-                damage: ability.damage, 
+                damage: rawDamage, 
                 health: enemy.health, 
                 maxHealth: enemy.maxHealth, 
                 attackerId: player.id 
@@ -72,7 +76,7 @@ export class CombatSystem {
 
             return { 
                 success: true, 
-                damage: ability.damage, 
+                damage: rawDamage, 
                 manaConsumed: ability.mana, 
                 targetDead,
                 targetId
@@ -82,19 +86,22 @@ export class CombatSystem {
         return { success: false, error: 'No valid target' };
     }
 
-    public processEnemyAttack(enemy: EnemyState, player: PlayerState): number {
+    public processEnemyAttack(enemy: EnemyState, player: PlayerState, damageReduction: number = 0): number {
         const def = DataLoader.getEnemyDef(enemy.type, enemy.isBoss);
-        const dmg = def ? def.damage : 5;
+        const rawDmg = def ? def.damage : 5;
         
-        player.health = Math.max(0, player.health - dmg);
+        // Armor Reduction: dmg * (1 - reduction%)
+        const actualDmg = Math.max(1, Math.floor(rawDmg * (1 - damageReduction)));
+
+        player.health = Math.max(0, player.health - actualDmg);
         
         this.eventBus.emit('player_damaged', { 
             playerId: player.id, 
-            damage: dmg, 
+            damage: actualDmg, 
             health: player.health, 
             sourceId: enemy.id 
         });
 
-        return dmg;
+        return actualDmg;
     }
 }

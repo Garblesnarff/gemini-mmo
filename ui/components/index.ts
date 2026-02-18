@@ -8,4 +8,7 @@ export * from './QuestDialog';
 export * from './ChatLog';
 export * from './XPBar';
 export * from './DamageVignette';
-        
+export * from './LootWindow';
+export * from './InventoryPanel';
+export * from './CharacterPanel';
+export * from './ItemTooltip';

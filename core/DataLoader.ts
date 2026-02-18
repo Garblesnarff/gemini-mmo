@@ -1,8 +1,11 @@
+
 import { WORLD_CONFIG } from '../data/world';
 import { ENEMY_DEFINITIONS } from '../data/enemies';
 import { ABILITY_DEFINITIONS } from '../data/abilities';
 import { QUEST_DEFINITIONS } from '../data/quests';
 import { NPC_DEFINITIONS } from '../data/npcs';
+import { ITEMS } from '../data/items';
+import { LOOT_TABLES } from '../data/lootTables';
 
 export const DataLoader = {
     getWorldConfig: () => WORLD_CONFIG,
@@ -20,4 +23,11 @@ export const DataLoader = {
 
     getNPCDef: (id: string) => NPC_DEFINITIONS.find(n => n.id === id),
     getAllNPCs: () => NPC_DEFINITIONS,
+
+    getItem: (id: string) => ITEMS[id],
+    getLootTable: (enemyType: string) => {
+        // Fallback for types not explicitly in loot table but in enemies list
+        if (enemyType === 'wolf_boss') return LOOT_TABLES['wolf_boss'];
+        return LOOT_TABLES[enemyType] || LOOT_TABLES['boar'];
+    }
 };

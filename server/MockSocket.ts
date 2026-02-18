@@ -1,5 +1,5 @@
 
-import { PlayerState, EnemyState, NPCState, CollectibleState } from '../shared/types';
+import { PlayerState, EnemyState, NPCState, CollectibleState, GeneratedLoot } from '../shared/types';
 import { MOCK_NAMES, LEVEL_XP } from '../shared/constants';
 import { DataLoader } from '../core/DataLoader';
 import { CombatSystem } from './CombatSystem';
@@ -7,6 +7,7 @@ import { QuestSystem } from './QuestSystem';
 import { XPSystem } from './XPSystem';
 import { EnemyAI } from './EnemyAI';
 import { SpawnManager } from './SpawnManager';
+import { LootSystem } from './LootSystem'; // New
 import { EventBus } from '../core/EventBus';
 
 type Listener = (...args: any[]) => void;
@@ -31,6 +32,7 @@ export class MockSocket {
   private xpSystem: XPSystem;
   private enemyAI: EnemyAI;
   private spawnManager: SpawnManager;
+  private lootSystem: LootSystem;
 
   constructor() {
     this.id = 'player_' + Math.random().toString(36).substr(2, 9);
@@ -38,6 +40,7 @@ export class MockSocket {
     // Initialize Systems
     this.eventBus = new EventBus();
     this.combatSystem = new CombatSystem(this.eventBus);
+    this.lootSystem = new LootSystem(this.eventBus); // Init loot
     this.questSystem = new QuestSystem(this.eventBus, this.players);
     this.xpSystem = new XPSystem(this.eventBus, this.players);
     this.enemyAI = new EnemyAI();
@@ -105,10 +108,6 @@ export class MockSocket {
          // handled via xp_gained listener for xp msg
       });
 
-      // Combat / World
-      // Removed generic spell_cast listener to prevent duplicates, handled in cast_ability and enemy logic
-      // this.eventBus.on('spell_cast', (payload) => { ... });
-
       this.eventBus.on('player_damaged', (payload) => {
           this.trigger('state_update', { 
               players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles,
@@ -127,12 +126,47 @@ export class MockSocket {
           }
           this.trigger('state_update', { players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles });
       });
-      this.eventBus.on('enemy_killed', () => {
+      
+      this.eventBus.on('enemy_killed', (payload) => {
            this.trigger('state_update', { players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles });
+      });
+
+      // LOOT EVENTS
+      this.eventBus.on('loot_available', (loot: GeneratedLoot) => {
+          if (this.enemies[loot.enemyId]) {
+              this.enemies[loot.enemyId].lootable = true;
+              this.trigger('state_update', { players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles });
+          }
+      });
+      this.eventBus.on('loot_collected', (payload) => {
+           this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: `You receive loot: ${payload.itemId}`, type: 'loot' });
+      });
+      this.eventBus.on('inventory_full', (payload) => {
+           this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: `Inventory is full.`, type: 'system' });
+      });
+      this.eventBus.on('loot_all_collected', (payload) => {
+           if (this.enemies[payload.enemyId]) {
+               this.enemies[payload.enemyId].lootable = false;
+               this.trigger('state_update', { players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles });
+           }
+      });
+      this.eventBus.on('item_used', (payload) => {
+          const itemDef = DataLoader.getItem(payload.itemId);
+          this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: `You use ${itemDef.name}.`, type: 'system' });
+          
+          if (payload.effect.type === 'heal') {
+               const p = this.players[this.id];
+               p.health = Math.min(p.maxHealth, p.health + payload.effect.value);
+          } else if (payload.effect.type === 'mana') {
+               const p = this.players[this.id];
+               p.mana = Math.min(p.maxMana, p.mana + payload.effect.value);
+          }
+      });
+      this.eventBus.on('equipment_changed', () => {
+           this.recalcStats();
       });
   }
 
-  // Terrain with Flat Camp Area (Shared Logic)
   private getTerrainHeight(x: number, z: number): number {
       const cx = this.worldConfig.camp.position.x;
       const cz = this.worldConfig.camp.position.z;
@@ -182,6 +216,22 @@ export class MockSocket {
     }
   }
 
+  private recalcStats() {
+      const p = this.players[this.id];
+      const stats = this.lootSystem.getEquipmentStats();
+      
+      // Base stats
+      const baseHealth = 100 + (p.level - 1) * 50;
+      const baseMana = 100 + (p.level - 1) * 50;
+      
+      p.maxHealth = baseHealth + (stats.stamina * 10);
+      p.maxMana = baseMana + (stats.intellect * 15);
+      p.health = Math.min(p.health, p.maxHealth);
+      p.mana = Math.min(p.mana, p.maxMana);
+      
+      p.stats = stats;
+  }
+
   public emit(event: string, data: any) {
     if (event === 'join') {
       // @ts-ignore
@@ -189,14 +239,17 @@ export class MockSocket {
       
       this.players[this.id] = {
           ...data,
-          quests: initialQuests
+          quests: initialQuests,
+          stats: { stamina: 0, intellect: 0, strength: 0, spirit: 0, armor: 0 }
       };
       
       this.trigger('init_world', { 
           players: this.players, 
           enemies: this.enemies, 
           npcs: this.npcs,
-          collectibles: this.collectibles
+          collectibles: this.collectibles,
+          inventory: this.lootSystem.getInventoryState(),
+          equipment: this.lootSystem.getEquipmentState()
       });
     }
     
@@ -235,7 +288,10 @@ export class MockSocket {
     if (event === 'cast_ability') {
         const player = this.players[this.id];
         if (player) {
-            const result = this.combatSystem.processAbility(player, data.abilityId, data.targetId, this.enemies, this.players);
+            // Apply spell power from stats
+            const bonusSpellPower = Math.floor((player.stats?.intellect || 0) / 2);
+            
+            const result = this.combatSystem.processAbility(player, data.abilityId, data.targetId, this.enemies, this.players, bonusSpellPower);
             if (!result.success && result.error) {
                 this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: result.error, type: 'system' });
             } else {
@@ -253,6 +309,69 @@ export class MockSocket {
                 });
             }
         }
+    }
+
+    // LOOT HANDLERS
+    if (event === 'request_loot') {
+        const enemy = this.enemies[data.enemyId];
+        const player = this.players[this.id];
+        if (enemy && enemy.isDead && player) {
+             const dist = Math.sqrt((enemy.position.x - player.position.x)**2 + (enemy.position.z - player.position.z)**2);
+             if (dist < 8) {
+                 const loot = this.lootSystem.getPendingLoot(data.enemyId);
+                 if (loot) {
+                     this.trigger('loot_opened', loot);
+                 }
+             }
+        }
+    }
+    if (event === 'loot_item') {
+        const res = this.lootSystem.lootItem(data.enemyId, data.itemIndex);
+        if (res.success) {
+            this.trigger('inventory_update', this.lootSystem.getInventoryState());
+            const loot = this.lootSystem.getPendingLoot(data.enemyId);
+            this.trigger('loot_opened', loot); // Refresh window
+        }
+    }
+    if (event === 'loot_all') {
+        this.lootSystem.lootAll(data.enemyId);
+        this.trigger('inventory_update', this.lootSystem.getInventoryState());
+        this.trigger('loot_opened', null); // Close window
+    }
+    if (event === 'close_loot') {
+        this.lootSystem.lootGold(data.enemyId); // Auto loot gold on close
+        this.trigger('inventory_update', this.lootSystem.getInventoryState());
+    }
+    if (event === 'equip_item') {
+        const res = this.lootSystem.equipItem(data.slot);
+        if (res.success) {
+            this.trigger('inventory_update', this.lootSystem.getInventoryState());
+            this.trigger('equipment_update', { equipment: this.lootSystem.getEquipmentState(), stats: this.lootSystem.getEquipmentStats() });
+        } else {
+            if (res.reason) this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: res.reason, type: 'system' });
+        }
+    }
+    if (event === 'unequip_item') {
+        const res = this.lootSystem.unequipItem(data.slot);
+        if (res.success) {
+            this.trigger('inventory_update', this.lootSystem.getInventoryState());
+            this.trigger('equipment_update', { equipment: this.lootSystem.getEquipmentState(), stats: this.lootSystem.getEquipmentStats() });
+        } else {
+             if (res.reason) this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: res.reason, type: 'system' });
+        }
+    }
+    if (event === 'use_item') {
+        if (this.lootSystem.useItem(data.slot).success) {
+            this.trigger('inventory_update', this.lootSystem.getInventoryState());
+        }
+    }
+    if (event === 'move_item') {
+        this.lootSystem.moveItem(data.fromSlot, data.toSlot);
+        this.trigger('inventory_update', this.lootSystem.getInventoryState());
+    }
+    if (event === 'destroy_item') {
+        this.lootSystem.destroyItem(data.slot);
+        this.trigger('inventory_update', this.lootSystem.getInventoryState());
     }
   }
 
@@ -305,7 +424,10 @@ export class MockSocket {
             // @ts-ignore
             const target = this.players[e.targetId];
             if (target) {
-                this.combatSystem.processEnemyAttack(e, target);
+                // Calculate mitigation
+                const armor = target.stats?.armor || 0;
+                const reduction = armor / (armor + 50);
+                this.combatSystem.processEnemyAttack(e, target, reduction);
             }
         }
     });
@@ -317,4 +439,3 @@ export class MockSocket {
     clearInterval(this.interval);
   }
 }
-        

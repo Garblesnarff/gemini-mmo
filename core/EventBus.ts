@@ -1,4 +1,5 @@
-import { Vector3 } from '../shared/types';
+
+import { Vector3, InventoryState, EquipmentState, StatBonuses, GeneratedLoot, UseEffect } from '../shared/types';
 
 export type EventMap = {
   'enemy_killed': { enemyId: string, enemyType: string, isBoss: boolean, killerId: string, position: Vector3 };
@@ -10,6 +11,15 @@ export type EventMap = {
   'level_up': { playerId: string, level: number };
   'item_collected': { playerId: string, itemId: string, itemType: string };
   'spell_cast': { casterId: string, spellId: string, targetId: string | null };
+  
+  // Loot & Items
+  'loot_available': GeneratedLoot;
+  'loot_collected': { enemyId: string, itemId: string };
+  'loot_all_collected': { enemyId: string };
+  'inventory_changed': { inventory: InventoryState };
+  'equipment_changed': { equipment: EquipmentState, stats: StatBonuses };
+  'inventory_full': { itemId: string, itemName: string };
+  'item_used': { itemId: string, effect: UseEffect };
 };
 
 type EventKey = keyof EventMap;
