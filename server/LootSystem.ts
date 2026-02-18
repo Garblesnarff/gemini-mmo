@@ -131,9 +131,15 @@ export class LootSystem {
 
       // Iterate backwards so splicing doesn't mess up indices
       for (let i = loot.items.length - 1; i >= 0; i--) {
+          const item = loot.items[i];
+          const itemName = DataLoader.getItem(item.itemId).name;
+          
           const res = this.lootItem(enemyId, i);
-          if (res.success) looted.push(DataLoader.getItem(loot.items[i]?.itemId || 'unknown').name);
-          else failed.push(DataLoader.getItem(loot.items[i].itemId).name);
+          if (res.success) {
+              looted.push(itemName);
+          } else {
+              failed.push(itemName);
+          }
       }
       return { looted, failed };
   }

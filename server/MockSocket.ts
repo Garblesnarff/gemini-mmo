@@ -336,7 +336,14 @@ export class MockSocket {
     if (event === 'loot_all') {
         this.lootSystem.lootAll(data.enemyId);
         this.trigger('inventory_update', this.lootSystem.getInventoryState());
-        this.trigger('loot_opened', null); // Close window
+        
+        // Check if anything remains
+        const loot = this.lootSystem.getPendingLoot(data.enemyId);
+        if (loot) {
+            this.trigger('loot_opened', loot); // Update window if items remain
+        } else {
+             this.trigger('loot_opened', null); // Close if empty
+        }
     }
     if (event === 'close_loot') {
         this.lootSystem.lootGold(data.enemyId); // Auto loot gold on close
