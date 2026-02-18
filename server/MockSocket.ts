@@ -235,7 +235,12 @@ export class MockSocket {
   public emit(event: string, data: any) {
     if (event === 'join') {
       // @ts-ignore
-      const initialQuests = DataLoader.getAllQuests().map(q => ({...q, status: 'available', targetEnemyType: q.targetId}));
+      const initialQuests = DataLoader.getAllQuests().map(q => ({
+          ...q, 
+          status: 'available', 
+          progress: 0,
+          targetEnemyType: q.targetId
+      }));
       
       this.players[this.id] = {
           ...data,
