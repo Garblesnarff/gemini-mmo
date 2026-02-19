@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { COLORS } from '../../shared/constants';
 
@@ -24,10 +25,13 @@ function createImpactEffect(scene: THREE.Scene, pos: THREE.Vector3, color: numbe
     scene.add(points);
     
     let frame = 0;
+    let rafHandle: number;
     const animate = () => {
         frame++;
         if(frame > 30) {
             scene.remove(points);
+            geo.dispose();
+            mat.dispose();
             return;
         }
         const positions = points.geometry.attributes.position.array as Float32Array;
@@ -38,9 +42,9 @@ function createImpactEffect(scene: THREE.Scene, pos: THREE.Vector3, color: numbe
         }
         points.geometry.attributes.position.needsUpdate = true;
         mat.opacity = 1 - (frame / 30);
-        requestAnimationFrame(animate);
+        rafHandle = requestAnimationFrame(animate);
     }
-    animate();
+    rafHandle = requestAnimationFrame(animate);
 }
 
 export const SpellEffects = {
@@ -59,19 +63,22 @@ export const SpellEffects = {
           const duration = startPos.distanceTo(targetPos) / 25;
           const startTime = Date.now();
           
+          let rafHandle: number;
           const animate = () => {
               const progress = (Date.now() - startTime) / (duration * 1000);
               
               if (progress >= 1) {
                   scene.remove(sphere);
+                  geometry.dispose();
+                  material.dispose();
                   createImpactEffect(scene, targetPos, COLORS.SPELL_FIRE);
                   return;
               }
               
               sphere.position.lerpVectors(startPos, targetPos, progress);
-              requestAnimationFrame(animate);
+              rafHandle = requestAnimationFrame(animate);
           };
-          animate();
+          rafHandle = requestAnimationFrame(animate);
 
       } else if (spellId === 'earth_shock') {
           let targetPos = targetMesh ? targetMesh.position.clone().add(new THREE.Vector3(0,1.5,0)) : startPos.clone().add(new THREE.Vector3(0,0,10).applyAxisAngle(new THREE.Vector3(0,1,0), casterMesh.rotation.y));
@@ -83,7 +90,11 @@ export const SpellEffects = {
           scene.add(line);
           
           createImpactEffect(scene, targetPos, COLORS.SPELL_SHOCK);
-          setTimeout(() => scene.remove(line), 200);
+          setTimeout(() => {
+              scene.remove(line);
+              geometry.dispose();
+              material.dispose();
+          }, 200);
 
       } else if (spellId === 'healing_wave') {
           const count = 30;
@@ -101,17 +112,21 @@ export const SpellEffects = {
           scene.add(particles);
 
           const startTime = Date.now();
+          let rafHandle: number;
           const animate = () => {
               const elapsed = Date.now() - startTime;
               if (elapsed > 1000) {
                   scene.remove(particles);
+                  // Dispose shared resources
+                  geo.dispose();
+                  mat.dispose();
                   return;
               }
               particles.rotation.y += 0.1;
               particles.position.y += 0.05;
-              requestAnimationFrame(animate);
+              rafHandle = requestAnimationFrame(animate);
           }
-          animate();
+          rafHandle = requestAnimationFrame(animate);
       }
   },
 
@@ -130,18 +145,21 @@ export const SpellEffects = {
       scene.add(pillar);
 
       const startTime = Date.now();
+      let rafHandle: number;
       const animate = () => {
           const elapsed = Date.now() - startTime;
           if (elapsed > 2000) {
               scene.remove(pillar);
+              geo.dispose();
+              mat.dispose();
               return;
           }
           const progress = elapsed / 2000;
           pillar.scale.setScalar(1 + progress);
           mat.opacity = 0.5 * (1 - progress);
-          requestAnimationFrame(animate);
+          rafHandle = requestAnimationFrame(animate);
       }
-      animate();
+      rafHandle = requestAnimationFrame(animate);
   },
 
   createImpactEffect
