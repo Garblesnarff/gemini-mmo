@@ -1,3 +1,4 @@
+
 import { PlayerState, EnemyState } from '../shared/types';
 import { LEVEL_XP } from '../shared/constants';
 import { DataLoader } from '../core/DataLoader';
@@ -38,14 +39,23 @@ export class XPSystem {
     player.xp += amount;
     this.eventBus.emit('xp_gained', { playerId: player.id, amount });
 
-    while (player.level < LEVEL_XP.length && player.xp >= player.maxXP) {
+    while (player.xp >= player.maxXP) {
         player.xp -= player.maxXP;
         player.level++;
-        player.maxXP = LEVEL_XP[player.level] || 999999;
+
+        // Determine next level requirement
+        if (player.level < LEVEL_XP.length) {
+            player.maxXP = LEVEL_XP[player.level];
+        } else {
+            // Procedural scaling for levels beyond config
+            // Previous max + 20% + flat 2000
+            player.maxXP = Math.floor(player.maxXP * 1.2) + 2000;
+        }
         
         // Stat increase
-        player.maxHealth += 50;
-        player.maxMana += 50;
+        const statMult = player.level > 10 ? 2 : 1;
+        player.maxHealth += 50 * statMult;
+        player.maxMana += 50 * statMult;
         player.health = player.maxHealth;
         player.mana = player.maxMana;
 

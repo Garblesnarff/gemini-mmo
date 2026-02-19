@@ -37,5 +37,28 @@ export const COLORS = {
   QUEST_MARKER: 0xFFD700,
 };
 
-export const LEVEL_XP = [0, 300, 900, 1800, 3000, 5000];
+// Extended Level Curve (1-20)
+export const LEVEL_XP = [
+    0,      // Level 0 placeholder
+    300,    // Level 1 -> 2
+    900,    // Level 2 -> 3
+    1800,   // Level 3 -> 4
+    3000,   // Level 4 -> 5
+    5000,   // Level 5 -> 6
+    7500,   // Level 6 -> 7
+    10500,  // Level 7 -> 8
+    14000,  // Level 8 -> 9
+    18000,  // Level 9 -> 10
+    22500,  // Level 10 -> 11
+    28000,  // Level 11 -> 12
+    34000,  // Level 12 -> 13
+    41000,  // Level 13 -> 14
+    49000,  // Level 14 -> 15
+    58000,  // Level 15 -> 16
+    68000,  // Level 16 -> 17
+    80000,  // Level 17 -> 18
+    95000,  // Level 18 -> 19
+    115000, // Level 19 -> 20
+];
+
 export const MOCK_NAMES = ['Thunderhoof', 'Earthwalker', 'Spiritrunner', 'Galehorn', 'Bloodhoof', 'Stonerage'];
