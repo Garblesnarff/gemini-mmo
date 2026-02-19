@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sword, Zap, Heart, Backpack } from 'lucide-react';
+import { Sword, Zap, Heart, Backpack, User } from 'lucide-react';
 import { DataLoader } from '../../core/DataLoader';
 
 interface ActionBarProps {
     level: number;
     onCast: (slot: number) => void;
     onToggleBag: () => void;
+    onToggleCharacter: () => void;
 }
 
-export const ActionBar: React.FC<ActionBarProps> = ({ level, onCast, onToggleBag }) => {
+export const ActionBar: React.FC<ActionBarProps> = ({ level, onCast, onToggleBag, onToggleCharacter }) => {
     const abilities = DataLoader.getAllAbilities();
     const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
     const [now, setNow] = useState(Date.now());
@@ -109,13 +110,23 @@ export const ActionBar: React.FC<ActionBarProps> = ({ level, onCast, onToggleBag
                 </div>
             </div>
 
-            {/* Bag Button */}
-            <div 
-                onClick={onToggleBag}
-                className="w-10 h-10 bg-gray-900 border-2 border-gray-500 hover:border-white cursor-pointer rounded-full flex items-center justify-center shadow-xl text-amber-600 mb-2"
-                title="Toggle Inventory (B)"
-            >
-                <Backpack size={20} />
+            <div className="flex flex-col gap-2 mb-2">
+                {/* Character Button */}
+                <div 
+                    onClick={onToggleCharacter}
+                    className="w-10 h-10 bg-gray-900 border-2 border-gray-500 hover:border-white cursor-pointer rounded-full flex items-center justify-center shadow-xl text-amber-600 transition-colors"
+                    title="Character (C)"
+                >
+                    <User size={20} />
+                </div>
+                {/* Bag Button */}
+                <div 
+                    onClick={onToggleBag}
+                    className="w-10 h-10 bg-gray-900 border-2 border-gray-500 hover:border-white cursor-pointer rounded-full flex items-center justify-center shadow-xl text-amber-600 transition-colors"
+                    title="Toggle Inventory (B)"
+                >
+                    <Backpack size={20} />
+                </div>
             </div>
         </div>
     );

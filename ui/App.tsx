@@ -316,6 +316,7 @@ export default function App() {
             level={localPlayer?.level || 1} 
             onCast={handleAbility} 
             onToggleBag={() => setShowInventory(prev => !prev)}
+            onToggleCharacter={() => setShowCharacter(prev => !prev)}
         />
 
         <ChatLog chat={gameState.chat} />

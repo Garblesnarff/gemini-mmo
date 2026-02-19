@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Coins } from 'lucide-react';
 import { GeneratedLoot } from '../../shared/types';
 import { DataLoader } from '../../core/DataLoader';
+import { ItemTooltip } from './ItemTooltip';
 
 interface LootWindowProps {
     loot: GeneratedLoot | null;
@@ -31,7 +32,23 @@ const formatGold = (copper: number): string => {
 };
 
 export const LootWindow: React.FC<LootWindowProps> = ({ loot, onClose, onLootItem, onLootAll }) => {
+    const [hoverItem, setHoverItem] = useState<{itemId: string, pos: {x:number, y:number}} | null>(null);
+
     if (!loot) return null;
+
+    const handleMouseEnter = (e: React.MouseEvent, itemId: string) => {
+        setHoverItem({ itemId, pos: { x: e.clientX, y: e.clientY } });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (hoverItem) {
+            setHoverItem({ ...hoverItem, pos: { x: e.clientX, y: e.clientY } });
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setHoverItem(null);
+    };
 
     return (
         <div className="absolute top-1/2 left-[60%] -translate-y-1/2 w-72 bg-gray-900 border-2 border-gray-600 rounded-lg shadow-2xl pointer-events-auto flex flex-col z-50">
@@ -60,7 +77,10 @@ export const LootWindow: React.FC<LootWindowProps> = ({ loot, onClose, onLootIte
                         <div 
                             key={idx} 
                             onClick={() => onLootItem(loot.enemyId, idx)}
-                            className="flex items-center gap-2 p-1 hover:bg-white/10 rounded cursor-pointer group"
+                            onMouseEnter={(e) => handleMouseEnter(e, item.itemId)}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            className="flex items-center gap-2 p-1 hover:bg-white/10 rounded cursor-pointer group relative"
                         >
                             <div 
                                 className="w-8 h-8 bg-black/50 border rounded flex items-center justify-center text-lg relative"
@@ -90,6 +110,13 @@ export const LootWindow: React.FC<LootWindowProps> = ({ loot, onClose, onLootIte
                         Loot All
                     </button>
                 </div>
+            )}
+
+            {hoverItem && (
+                <ItemTooltip 
+                    item={{ itemId: hoverItem.itemId, quantity: 1 }} 
+                    position={hoverItem.pos} 
+                />
             )}
         </div>
     );
