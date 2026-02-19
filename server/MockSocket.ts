@@ -328,7 +328,11 @@ export class MockSocket {
                  const loot = this.lootSystem.getPendingLoot(data.enemyId);
                  if (loot) {
                      this.trigger('loot_opened', loot);
+                 } else {
+                     this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: 'Nothing left to loot.', type: 'system' });
                  }
+             } else {
+                 this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: 'You are too far away to loot.', type: 'system' });
              }
         }
     }
