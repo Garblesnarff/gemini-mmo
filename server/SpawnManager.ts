@@ -67,7 +67,7 @@ export class SpawnManager {
         } while (dist < this.worldConfig.camp.radius + 15); 
 
         const rand = Math.random();
-        const type = rand < 0.33 ? 'boar' : rand < 0.66 ? 'wolf' : 'kodo';
+        const type = (rand < 0.33 ? 'boar' : rand < 0.66 ? 'wolf' : 'kodo') as EnemyState['type'];
         const def = DataLoader.getEnemyDef(type);
         
         const pos = { 
@@ -78,7 +78,6 @@ export class SpawnManager {
 
         this.enemies[id] = {
             id,
-            // @ts-ignore
             type,
             position: pos,
             spawnPosition: { ...pos },
