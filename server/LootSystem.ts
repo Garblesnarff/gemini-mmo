@@ -96,8 +96,9 @@ export class LootSystem {
       } else if (remaining < item.quantity) {
            // Partial loot
            item.quantity = remaining;
+           this.eventBus.emit('loot_collected', { enemyId, itemId: item.itemId });
            this.eventBus.emit('inventory_full', { itemId: item.itemId, itemName: itemDef.name });
-           return { success: false, reason: "Inventory Full" };
+           return { success: true };
       } else {
            this.eventBus.emit('inventory_full', { itemId: item.itemId, itemName: itemDef.name });
            return { success: false, reason: "Inventory Full" };
