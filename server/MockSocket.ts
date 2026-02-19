@@ -314,6 +314,82 @@ export class MockSocket {
                         targetDead: result.targetDead
                     }
                 });
+
+                // CHAIN LIGHTNING BOUNCE LOGIC
+                if (data.abilityId === 'chain_lightning' && result.success && data.targetId) {
+                    let currentId = data.targetId;
+                    const visited = new Set<string>([data.targetId]);
+                    const chain = [];
+
+                    for(let i=0; i<2; i++) {
+                        const currentEnemy = this.enemies[currentId];
+                        const currentPos = currentEnemy?.position || (currentId === this.id ? player.position : null);
+                        if(!currentPos) break;
+
+                        let bestCand = null;
+                        let bestDist = 8; // Max jump range
+
+                        Object.values(this.enemies).forEach(e => {
+                            if (!e.isDead && !visited.has(e.id)) {
+                                const d = Math.sqrt((e.position.x - currentPos.x)**2 + (e.position.z - currentPos.z)**2);
+                                if (d < bestDist) {
+                                    bestDist = d;
+                                    bestCand = e;
+                                }
+                            }
+                        });
+
+                        if (bestCand) {
+                            chain.push({ source: currentId, target: bestCand.id });
+                            visited.add(bestCand.id);
+                            currentId = bestCand.id;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    chain.forEach((step, i) => {
+                        setTimeout(() => {
+                            const target = this.enemies[step.target];
+                            if (target && !target.isDead) {
+                                const damage = 10; // Bounce damage
+                                target.health = Math.max(0, target.health - damage);
+                                
+                                let targetDead = false;
+                                if (target.health <= 0) {
+                                    target.isDead = true;
+                                    target.aiState = 'dead';
+                                    targetDead = true;
+                                    this.eventBus.emit('enemy_killed', {
+                                        enemyId: target.id,
+                                        enemyType: target.type,
+                                        isBoss: !!target.isBoss,
+                                        killerId: this.id,
+                                        position: target.position
+                                    });
+                                } else {
+                                     // Aggro bounce targets if not already
+                                     if (!target.targetId) {
+                                         target.targetId = this.id;
+                                         target.aiState = 'chase';
+                                     }
+                                }
+
+                                this.trigger('state_update', { 
+                                    players: this.players, enemies: this.enemies, npcs: this.npcs, collectibles: this.collectibles,
+                                    event: { 
+                                        type: 'spell_cast', 
+                                        spellId: 'chain_lightning_arc', 
+                                        casterId: step.source, 
+                                        targetId: step.target,
+                                        damage: damage,
+                                        targetDead
+                                    }
+                                });
+                            }
+                        }, 150 * (i + 1));
+                    });
+                }
             }
         }
     }

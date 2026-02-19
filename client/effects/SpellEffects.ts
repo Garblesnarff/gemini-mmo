@@ -127,6 +127,28 @@ export const SpellEffects = {
               rafHandle = requestAnimationFrame(animate);
           }
           rafHandle = requestAnimationFrame(animate);
+      
+      } else if (spellId === 'chain_lightning' || spellId === 'chain_lightning_arc') {
+          let targetPos = targetMesh ? targetMesh.position.clone().add(new THREE.Vector3(0,1.5,0)) : startPos.clone().add(new THREE.Vector3(0,0,10).applyAxisAngle(new THREE.Vector3(0,1,0), casterMesh.rotation.y));
+          
+          const isArc = spellId === 'chain_lightning_arc';
+          const points = [startPos, targetPos];
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          const material = new THREE.LineBasicMaterial({ 
+              color: COLORS.SPELL_LIGHTNING, 
+              linewidth: 5,
+              transparent: true,
+              opacity: isArc ? 0.5 : 1.0
+          });
+          const line = new THREE.Line(geometry, material);
+          scene.add(line);
+          
+          createImpactEffect(scene, targetPos, COLORS.SPELL_LIGHTNING);
+          setTimeout(() => {
+              scene.remove(line);
+              geometry.dispose();
+              material.dispose();
+          }, isArc ? 150 : 200);
       }
   },
 

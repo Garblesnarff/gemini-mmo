@@ -108,6 +108,22 @@ export const ActionBar: React.FC<ActionBarProps> = ({ level, onCast, onToggleBag
                     </div>
                     {renderCooldownOverlay(abilities[2].id, abilities[2].cooldown)}
                 </div>
+
+                {/* Slot 4: Chain Lightning (Lvl 4) */}
+                <div 
+                    onClick={() => level >= 4 && handleCast(4, abilities[3].id, abilities[3].cooldown)}
+                    className={`w-14 h-14 bg-gray-900 border-2 rounded-lg flex items-center justify-center relative shadow-xl transition-all ${level >= 4 ? 'border-gray-500 hover:border-amber-400 cursor-pointer' : 'border-gray-800 opacity-50 cursor-not-allowed'} ${cooldowns[abilities[3].id] > now ? 'cursor-not-allowed border-gray-700' : ''}`}
+                >
+                    <div className={level >= 4 ? "text-blue-400" : "text-gray-600"}><Zap size={28} /></div>
+                    <div className="absolute bottom-0 right-1 text-xs text-white font-bold bg-black/50 px-1 rounded">4</div>
+                    {level < 4 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded text-xs font-bold text-red-500">Lv 4</div>
+                    )}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap border border-gray-700 z-50 pointer-events-none">
+                        {abilities[3].name} (Lvl {abilities[3].minLevel})
+                    </div>
+                    {renderCooldownOverlay(abilities[3].id, abilities[3].cooldown)}
+                </div>
             </div>
 
             <div className="flex flex-col gap-2 mb-2">

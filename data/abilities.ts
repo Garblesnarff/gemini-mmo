@@ -1,3 +1,4 @@
+
 export const ABILITY_DEFINITIONS = [
   { 
       id: 'fireball', 
@@ -25,5 +26,14 @@ export const ABILITY_DEFINITIONS = [
       range: 0, 
       minLevel: 3, 
       cooldown: 6000 
+  },
+  {
+      id: 'chain_lightning',
+      name: 'Chain Lightning',
+      damage: 20,
+      mana: 30,
+      range: 20,
+      minLevel: 4,
+      cooldown: 8000
   }
 ];

@@ -221,6 +221,7 @@ export default function App() {
         if (e.key === '1') handleAbility(1);
         if (e.key === '2') handleAbility(2);
         if (e.key === '3') handleAbility(3);
+        if (e.key === '4') handleAbility(4);
         if (e.key.toLowerCase() === 'b') setShowInventory(prev => !prev);
         if (e.key.toLowerCase() === 'c') setShowCharacter(prev => !prev);
         if (e.key === 'Escape') {
