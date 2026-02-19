@@ -139,7 +139,9 @@ export class MockSocket {
           }
       });
       this.eventBus.on('loot_collected', (payload) => {
-           this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: `You receive loot: ${payload.itemId}`, type: 'loot' });
+           const def = DataLoader.getItem(payload.itemId);
+           const itemName = def ? def.name : payload.itemId;
+           this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: `You receive loot: ${itemName}`, type: 'loot' });
       });
       this.eventBus.on('inventory_full', (payload) => {
            this.trigger('chat_message', { id: Math.random().toString(), sender: 'System', text: `Inventory is full.`, type: 'system' });

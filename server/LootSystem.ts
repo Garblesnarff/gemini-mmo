@@ -86,7 +86,7 @@ export class LootSystem {
       
       if (remaining === 0) {
           // Full success
-          this.eventBus.emit('loot_collected', { enemyId, itemId: itemDef.name });
+          this.eventBus.emit('loot_collected', { enemyId, itemId: item.itemId });
           loot.items.splice(itemIndex, 1);
           if (loot.items.length === 0 && loot.gold === 0) {
               this.pendingLoot.delete(enemyId);
