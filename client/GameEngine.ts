@@ -508,8 +508,19 @@ export class GameEngine {
   }
 
   private removeLootSparkle(enemyId: string) {
-      if (this.lootSparkles[enemyId]) {
-          this.scene.remove(this.lootSparkles[enemyId]);
+      const group = this.lootSparkles[enemyId];
+      if (group) {
+          group.traverse((child) => {
+              if (child instanceof THREE.Mesh) {
+                  child.geometry.dispose();
+                  if (Array.isArray(child.material)) {
+                      child.material.forEach((m: any) => m.dispose());
+                  } else {
+                      child.material.dispose();
+                  }
+              }
+          });
+          this.scene.remove(group);
           delete this.lootSparkles[enemyId];
       }
   }
@@ -828,6 +839,19 @@ export class GameEngine {
     Object.keys(this.playerMeshes).forEach(id => {
         if (!players[id]) {
             const mesh = this.playerMeshes[id];
+
+            // Dispose resources
+            mesh.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.geometry.dispose();
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach((m: any) => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
+
             this.scene.remove(mesh);
             this.animatedMeshes = this.animatedMeshes.filter(m => m !== mesh);
             delete this.playerMeshes[id];
